@@ -1,5 +1,32 @@
 import { useState, useEffect } from "react";
 
+import { db } from "./firebase";
+import {
+  collection,
+  addDoc,
+  getDocs,
+  deleteDoc,
+  doc,
+} from "firebase/firestore";
+
+useEffect(() => {
+  const fetchPosts = async () => {
+    const querySnapshot = await getDocs(collection(db, "posts"));
+    const data = querySnapshot.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+    }));
+    setPosts(data);
+  };
+
+  fetchPosts();
+}, []);
+
+const deletePost = async (id) => {
+  await deleteDoc(doc(db, "posts", id));
+  setPosts(posts.filter((post) => post.id !== id));
+};
+
 const stations = [
   { id: 1, name: "池袋", x: 260, y: 80 },
   { id: 2, name: "新宿", x: 180, y: 170 },
@@ -39,24 +66,25 @@ useEffect(() => {
     (post) => post.station === selectedStation
   );
 
-  const addPost = () => {
-    if (!shopName || !rating) return;
+ const addPost = async () => {
+  if (!shopName || !rating) return;
 
-    const newPost = {
-      id: Date.now(),
-      station: selectedStation,
-      shopName,
-      genre,
-      rating,
-      memo,
-    };
-
-    setPosts([...posts, newPost]);
-    setShopName("");
-    setGenre("家系");
-    setRating("");
-    setMemo("");
+  const newPost = {
+    station: selectedStation,
+    shopName,
+    genre,
+    rating: Number(rating),
+    memo,
+    createdAt: new Date(),
   };
+
+  await addDoc(collection(db, "posts"), newPost);
+
+  setShopName("");
+  setGenre("家系");
+  setRating("");
+  setMemo("");
+};
 
   const deletePost = (id) => {
     setPosts(posts.filter((post) => post.id !== id));
