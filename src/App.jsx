@@ -4,10 +4,13 @@ import { db } from "./firebase";
 import {
   collection,
   addDoc,
+  getDocs,
   deleteDoc,
   doc,
-  onSnapshot,
+   onSnapshot,
 } from "firebase/firestore";
+
+
 
 const stations = [
   { id: 1, name: "池袋", x: 260, y: 80 },
@@ -23,61 +26,71 @@ function App() {
   const [genre, setGenre] = useState("家系");
   const [rating, setRating] = useState("");
   const [memo, setMemo] = useState("");
-  const [posts, setPosts] = useState([]);
 
-  // 🔥 リアルタイム取得
-  useEffect(() => {
-    const unsubscribe = onSnapshot(collection(db, "posts"), (snapshot) => {
-      const data = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
-      setPosts(data);
-    });
+const defaultPosts = [
+  {
+    id: 1,
+    station: "新宿",
+    shopName: "らぁ麺 はやし田",
+    genre: "醤油",
+    rating: 4.2,
+    memo: "綺麗めな醤油。駅近で行きやすい。",
+  },
+];
 
-    return () => unsubscribe();
-  }, []);
+ const [posts, setPosts] = useState([]);
+
+useEffect(() => {
+ const unsubscribe = onSnapshot(collection(db, "posts"), (snapshot) => {
+  const data = snapshot.docs.map((doc) => ({
+    id: doc.id,
+    ...doc.data(),
+  }));
+
+  setPosts(data);
+});
+
+return () => unsubscribe();
+}, []);
 
   const filteredPosts = posts.filter(
     (post) => post.station === selectedStation
   );
 
-  // 🔥 投稿
-  const addPost = async () => {
-    if (!shopName || !rating) {
-      alert("入力して");
-      return;
-    }
+ const addPost = async () => {
+  console.log("追加ボタン押された");
 
-    const newPost = {
-      station: selectedStation,
-      shopName,
-      genre,
-      rating: Number(rating),
-      memo,
-      createdAt: new Date(),
-    };
+  if (!shopName || !rating) {
+    alert("店名と評価を入力して");
+    return;
+  }
 
-    try {
-      const docRef = await addDoc(collection(db, "posts"), newPost);
-
-      setPosts([...posts, { id: docRef.id, ...newPost }]);
-
-      setShopName("");
-      setGenre("家系");
-      setRating("");
-      setMemo("");
-    } catch (e) {
-      console.error(e);
-      alert("投稿失敗");
-    }
+  const newPost = {
+    station: selectedStation,
+    shopName,
+    genre,
+    rating: Number(rating),
+    memo,
+    createdAt: new Date(),
   };
 
-  // 🔥 削除
-  const deletePost = async (id) => {
-    await deleteDoc(doc(db, "posts", id));
-    setPosts(posts.filter((post) => post.id !== id));
-  };
+  try {
+    await addDoc(collection(db, "posts"), newPost);
+
+    setShopName("");
+    setGenre("家系");
+    setRating("");
+    setMemo("");
+  } catch (error) {
+    console.error("投稿エラー:", error);
+    alert("投稿に失敗しました");
+  }
+};
+
+const deletePost = async (id) => {
+  await deleteDoc(doc(db, "posts", id));
+  setPosts(posts.filter((post) => post.id !== id));
+};
 
   const getPostCount = (stationName) => {
     return posts.filter((post) => post.station === stationName).length;
@@ -93,12 +106,25 @@ function App() {
           display: "grid",
           gridTemplateColumns: "1fr 1fr",
           gap: "24px",
+          alignItems: "start",
         }}
       >
-        <div style={{ border: "1px solid #ddd", padding: "16px" }}>
+        <div
+          style={{
+            border: "1px solid #ddd",
+            borderRadius: "12px",
+            padding: "16px",
+          }}
+        >
           <h2>路線図</h2>
 
-          <svg width="520" height="360">
+          <svg width="520" height="360" style={{ background: "#fafafa" }}>
+            <line x1="260" y1="80" x2="180" y2="170" stroke="#333" strokeWidth="4" />
+            <line x1="180" y1="170" x2="210" y2="280" stroke="#333" strokeWidth="4" />
+            <line x1="260" y1="80" x2="410" y2="110" stroke="#333" strokeWidth="4" />
+            <line x1="410" y1="110" x2="390" y2="230" stroke="#333" strokeWidth="4" />
+            <line x1="390" y1="230" x2="210" y2="280" stroke="#333" strokeWidth="4" />
+
             {stations.map((station) => (
               <g
                 key={station.id}
@@ -111,11 +137,22 @@ function App() {
                   r="18"
                   fill={selectedStation === station.name ? "#ff7043" : "white"}
                   stroke="#333"
+                  strokeWidth="3"
                 />
-                <text x={station.x} y={station.y - 25} textAnchor="middle">
+                <text
+                  x={station.x}
+                  y={station.y - 28}
+                  textAnchor="middle"
+                  fontSize="14"
+                >
                   {station.name}
                 </text>
-                <text x={station.x} y={station.y + 5} textAnchor="middle">
+                <text
+                  x={station.x}
+                  y={station.y + 5}
+                  textAnchor="middle"
+                  fontSize="12"
+                >
                   {getPostCount(station.name)}
                 </text>
               </g>
@@ -123,41 +160,77 @@ function App() {
           </svg>
         </div>
 
-        <div style={{ border: "1px solid #ddd", padding: "16px" }}>
-          <h2>{selectedStation}駅</h2>
+        <div
+          style={{
+            border: "1px solid #ddd",
+            borderRadius: "12px",
+            padding: "16px",
+          }}
+        >
+          <h2>{selectedStation}駅周辺</h2>
 
-          <input
-            placeholder="店名"
-            value={shopName}
-            onChange={(e) => setShopName(e.target.value)}
-          />
+          <h3>投稿する</h3>
+          <div style={{ display: "grid", gap: "8px" }}>
+            <input
+              placeholder="店名"
+              value={shopName}
+              onChange={(e) => setShopName(e.target.value)}
+            />
 
-          <select value={genre} onChange={(e) => setGenre(e.target.value)}>
-            <option>家系</option>
-            <option>二郎系</option>
-            <option>醤油</option>
-          </select>
+            <select value={genre} onChange={(e) => setGenre(e.target.value)}>
+              <option>家系</option>
+              <option>二郎系</option>
+              <option>醤油</option>
+              <option>味噌</option>
+              <option>塩</option>
+              <option>豚骨</option>
+              <option>つけ麺</option>
+              <option>油そば</option>
+            </select>
 
-          <input
-            placeholder="評価"
-            value={rating}
-            onChange={(e) => setRating(e.target.value)}
-          />
+            <input
+              type="number"
+              step="0.1"
+              min="0"
+              max="5"
+              placeholder="評価 例: 4.5"
+              value={rating}
+              onChange={(e) => setRating(e.target.value)}
+            />
 
-          <textarea
-            placeholder="メモ"
-            value={memo}
-            onChange={(e) => setMemo(e.target.value)}
-          />
+            <textarea
+              placeholder="メモ"
+              value={memo}
+              onChange={(e) => setMemo(e.target.value)}
+            />
 
-          <button onClick={addPost}>追加</button>
+            <button onClick={addPost}>追加</button>
+          </div>
 
-          {filteredPosts.map((post) => (
-            <div key={post.id}>
-              <strong>{post.shopName}</strong>
-              <button onClick={() => deletePost(post.id)}>削除</button>
-            </div>
-          ))}
+          <hr style={{ margin: "20px 0" }} />
+
+          <h3>投稿一覧</h3>
+          {filteredPosts.length === 0 ? (
+            <p>まだ投稿がありません。</p>
+          ) : (
+            filteredPosts.map((post) => (
+              <div
+                key={post.id}
+                style={{
+                  border: "1px solid #eee",
+                  borderRadius: "8px",
+                  padding: "12px",
+                  marginBottom: "10px",
+                }}
+              >
+                <strong>{post.shopName}</strong>
+                <div>ジャンル: {post.genre}</div>
+                <div>評価: ★{post.rating}</div>
+                <div>メモ: {post.memo}</div>
+                <button onClick={() => deletePost(post.id)}>削除</button>
+              </div>
+            ))
+          )}
         </div>
       </div>
     </div>
