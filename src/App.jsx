@@ -4,10 +4,9 @@ import { db } from "./firebase";
 import {
   collection,
   addDoc,
-  getDocs,
   deleteDoc,
   doc,
-   onSnapshot,
+  onSnapshot,
 } from "firebase/firestore";
 
 
@@ -41,16 +40,16 @@ const defaultPosts = [
  const [posts, setPosts] = useState([]);
 
 useEffect(() => {
- const unsubscribe = onSnapshot(collection(db, "posts"), (snapshot) => {
-  const data = snapshot.docs.map((doc) => ({
-    id: doc.id,
-    ...doc.data(),
-  }));
+  const unsubscribe = onSnapshot(collection(db, "posts"), (snapshot) => {
+    const data = snapshot.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+    }));
 
-  setPosts(data);
-});
+    setPosts(data);
+  });
 
-return () => unsubscribe();
+  return () => unsubscribe();
 }, []);
 
   const filteredPosts = posts.filter(
@@ -76,6 +75,7 @@ return () => unsubscribe();
 
   try {
     await addDoc(collection(db, "posts"), newPost);
+    console.log("Firebase保存成功"); 
 
     setShopName("");
     setGenre("家系");

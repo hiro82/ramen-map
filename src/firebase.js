@@ -2,12 +2,12 @@ import { initializeApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
 
 const firebaseConfig = {
-  apiKey: "ここに入れる",
-  authDomain: "ここに入れる",
-  projectId: "ここに入れる",
-  storageBucket: "ここに入れる",
-  messagingSenderId: "ここに入れる",
-  appId: "ここに入れる",
+  apiKey: "AIzaSy...",
+  authDomain: "ramen-map-268d3.firebaseapp.com",
+  projectId: "ramen-map-268d3",
+  storageBucket: "ramen-map-268d3.appspot.com",
+  messagingSenderId: "288346129144",
+  appId: "1:288346129144:web:..."
 };
 
 const app = initializeApp(firebaseConfig);
