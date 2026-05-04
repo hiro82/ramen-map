@@ -9,23 +9,7 @@ import {
   doc,
 } from "firebase/firestore";
 
-useEffect(() => {
-  const fetchPosts = async () => {
-    const querySnapshot = await getDocs(collection(db, "posts"));
-    const data = querySnapshot.docs.map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
-    }));
-    setPosts(data);
-  };
 
-  fetchPosts();
-}, []);
-
-const deletePost = async (id) => {
-  await deleteDoc(doc(db, "posts", id));
-  setPosts(posts.filter((post) => post.id !== id));
-};
 
 const stations = [
   { id: 1, name: "池袋", x: 260, y: 80 },
@@ -42,26 +26,22 @@ function App() {
   const [rating, setRating] = useState("");
   const [memo, setMemo] = useState("");
 
-const defaultPosts = [
-  {
-    id: 1,
-    station: "新宿",
-    shopName: "らぁ麺 はやし田",
-    genre: "醤油",
-    rating: 4.2,
-    memo: "綺麗めな醤油。駅近で行きやすい。",
-  },
-];
 
-  const [posts, setPosts] = useState(() => {
-  const saved = localStorage.getItem("ramen-posts");
-  return saved ? JSON.parse(saved) : [];
-});
+
+ const [posts, setPosts] = useState([]);
 
 useEffect(() => {
-  localStorage.setItem("ramen-posts", JSON.stringify(posts));
-}, [posts]);
+  const fetchPosts = async () => {
+    const querySnapshot = await getDocs(collection(db, "posts"));
+    const data = querySnapshot.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+    }));
+    setPosts(data);
+  };
 
+  fetchPosts();
+}, []);
   const filteredPosts = posts.filter(
     (post) => post.station === selectedStation
   );
@@ -78,7 +58,9 @@ useEffect(() => {
     createdAt: new Date(),
   };
 
-  await addDoc(collection(db, "posts"), newPost);
+  const docRef = await addDoc(collection(db, "posts"), newPost);
+
+setPosts([...posts, { id: docRef.id, ...newPost }]);
 
   setShopName("");
   setGenre("家系");
@@ -86,9 +68,10 @@ useEffect(() => {
   setMemo("");
 };
 
-  const deletePost = (id) => {
-    setPosts(posts.filter((post) => post.id !== id));
-  };
+const deletePost = async (id) => {
+  await deleteDoc(doc(db, "posts", id));
+  setPosts(posts.filter((post) => post.id !== id));
+};
 
   const getPostCount = (stationName) => {
     return posts.filter((post) => post.station === stationName).length;
