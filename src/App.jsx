@@ -8,6 +8,13 @@ import {
   doc,
   onSnapshot,
 } from "firebase/firestore";
+import { auth } from "./firebase";
+import {
+  GoogleAuthProvider,
+  signInWithPopup,
+  signOut,
+  onAuthStateChanged,
+} from "firebase/auth";
 
 
 
@@ -25,6 +32,17 @@ function App() {
   const [genre, setGenre] = useState("家系");
   const [rating, setRating] = useState("");
   const [memo, setMemo] = useState("");
+  const [posts, setPosts] = useState([]);
+  const [user, setUser] = useState(null); 
+  
+  const login = async () => {
+  const provider = new GoogleAuthProvider();
+  await signInWithPopup(auth, provider);
+};
+
+const logout = async () => {
+  await signOut(auth);
+};
 
 const defaultPosts = [
   {
@@ -37,7 +55,7 @@ const defaultPosts = [
   },
 ];
 
- const [posts, setPosts] = useState([]);
+
 
 useEffect(() => {
   const unsubscribe = onSnapshot(collection(db, "posts"), (snapshot) => {
@@ -47,6 +65,14 @@ useEffect(() => {
     }));
 
     setPosts(data);
+  });
+
+  return () => unsubscribe();
+}, []);
+
+useEffect(() => {
+  const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+    setUser(currentUser);
   });
 
   return () => unsubscribe();
@@ -71,6 +97,8 @@ useEffect(() => {
     rating: Number(rating),
     memo,
     createdAt: new Date(),
+    userId: user.uid,
+    userName: user.displayName || "名前なし",
   };
 
   try {
@@ -96,10 +124,20 @@ const deletePost = async (id) => {
     return posts.filter((post) => post.station === stationName).length;
   };
 
+
   return (
     <div style={{ maxWidth: "900px", margin: "30px auto", padding: "20px" }}>
       <h1>ラーメン路線図マップ</h1>
       <p>駅を選ぶと、その駅周辺のラーメン記録を見られます。</p>
+
+{user ? (
+  <div>
+    <span>{user.displayName}</span>
+  <button onClick={logout}>ログアウト</button>
+  </div>
+) : (
+  <button onClick={login}>Googleでログイン</button>
+)}
 
       <div
         style={{
@@ -168,6 +206,7 @@ const deletePost = async (id) => {
           }}
         >
           <h2>{selectedStation}駅周辺</h2>
+        {!user && <p>投稿するにはログインしてください</p>}
 
           <h3>投稿する</h3>
           <div style={{ display: "grid", gap: "8px" }}>
@@ -204,7 +243,9 @@ const deletePost = async (id) => {
               onChange={(e) => setMemo(e.target.value)}
             />
 
-            <button onClick={addPost}>追加</button>
+            <button onClick={addPost} disabled={!user}>
+              追加
+            </button>
           </div>
 
           <hr style={{ margin: "20px 0" }} />
@@ -224,10 +265,10 @@ const deletePost = async (id) => {
                 }}
               >
                 <strong>{post.shopName}</strong>
+                <div>投稿者: {post.userName || "不明"}</div>
                 <div>ジャンル: {post.genre}</div>
                 <div>評価: ★{post.rating}</div>
                 <div>メモ: {post.memo}</div>
-                <button onClick={() => deletePost(post.id)}>削除</button>
               </div>
             ))
           )}
