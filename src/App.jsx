@@ -30,17 +30,18 @@ function App() {
 
  const [posts, setPosts] = useState([]);
 
+import { onSnapshot } from "firebase/firestore";
+
 useEffect(() => {
-  const fetchPosts = async () => {
-    const querySnapshot = await getDocs(collection(db, "posts"));
-    const data = querySnapshot.docs.map((doc) => ({
+  const unsubscribe = onSnapshot(collection(db, "posts"), (snapshot) => {
+    const data = snapshot.docs.map((doc) => ({
       id: doc.id,
       ...doc.data(),
     }));
     setPosts(data);
-  };
+  });
 
-  fetchPosts();
+  return () => unsubscribe();
 }, []);
   const filteredPosts = posts.filter(
     (post) => post.station === selectedStation
