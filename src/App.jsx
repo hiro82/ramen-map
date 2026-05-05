@@ -66,6 +66,19 @@ const denentoshiStations = [
   { id: 12, name: "大手町", x: 440, y: 360, label: "bottom" },
 ];
 
+const toyokoStations = [
+  { id: 1, name: "渋谷", x: 80, y: 80 },
+  { id: 2, name: "代官山", x: 180, y: 80 },
+  { id: 3, name: "中目黒", x: 280, y: 80 },
+  { id: 4, name: "祐天寺", x: 380, y: 80 },
+  { id: 5, name: "学芸大学", x: 480, y: 80 },
+  { id: 6, name: "自由が丘", x: 480, y: 220, label: "right" },
+  { id: 7, name: "田園調布", x: 380, y: 220, label: "bottom" },
+  { id: 8, name: "多摩川", x: 280, y: 220, label: "bottom" },
+  { id: 9, name: "新丸子", x: 180, y: 220, label: "bottom" },
+  { id: 10, name: "武蔵小杉", x: 80, y: 220, label: "bottom" },
+];
+
 
 function App() {
 const [selectedLine, setSelectedLine] = useState("中央線");
@@ -76,6 +89,8 @@ if (selectedLine === "山手線") {
   stations = yamanoteStations;
 } else if (selectedLine === "田園都市線・半蔵門線") {
   stations = denentoshiStations;
+} else if (selectedLine === "東横線") {
+  stations = toyokoStations;
 }
 
   const [selectedStation, setSelectedStation] = useState("新宿");
@@ -90,11 +105,7 @@ if (selectedLine === "山手線") {
   const [nicknameInput, setNicknameInput] = useState("");
 
 
-if (selectedLine === "山手線") {
-  stations = yamanoteStations;
-} else if (selectedLine === "田園都市線・半蔵門線") {
-  stations = denentoshiStations;
-}
+
   
   const login = async () => {
   const provider = new GoogleAuthProvider();
@@ -265,6 +276,15 @@ const deletePost = async (id) => {
   >
     田園都市線・半蔵門線
   </button>
+
+  <button
+  onClick={() => setSelectedLine("東横線")}
+  style={{
+    background: selectedLine === "東横線" ? "#ff7043" : "#eee",
+  }}
+>
+  東横線
+</button>
 </div>
 
 {user ? (
@@ -339,6 +359,14 @@ const deletePost = async (id) => {
     <line x1="440" y1="220" x2="80" y2="220" stroke="#333" strokeWidth="4" />
     <line x1="80" y1="220" x2="80" y2="360" stroke="#333" strokeWidth="4" />
     <line x1="80" y1="360" x2="440" y2="360" stroke="#333" strokeWidth="4" />
+  </>
+)}
+
+{selectedLine === "東横線" && (
+  <>
+    <line x1="80" y1="80" x2="480" y2="80" stroke="#333" strokeWidth="4" />
+    <line x1="480" y1="80" x2="480" y2="200" stroke="#333" strokeWidth="4" />
+    <line x1="480" y1="200" x2="80" y2="200" stroke="#333" strokeWidth="4" />
   </>
 )}
             {stations.map((station) => (
