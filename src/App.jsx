@@ -245,13 +245,13 @@ const deletePost = async (id) => {
 )}
 
       <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "1fr 1fr",
-          gap: "24px",
-          alignItems: "start",
-        }}
-      >
+            style={{
+              display: "grid",
+              gridTemplateColumns: window.innerWidth < 768 ? "1fr" : "2fr 1fr",
+              gap: "16px",
+              alignItems: "start",
+            }}
+>         
         <div
            style={{
              border: "1px solid #ddd",
