@@ -7,6 +7,7 @@ import {
   doc,
   onSnapshot,
 } from "firebase/firestore";
+
 import { auth } from "./firebase";
 import {
   GoogleAuthProvider,
@@ -17,7 +18,6 @@ import {
 
 import { storage } from "./firebase";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
-
 
 
 const chuoStations = [
@@ -194,7 +194,14 @@ const deletePost = async (id) => {
 
 
   return (
-    <div style={{ maxWidth: "900px", margin: "30px auto", padding: "20px" }}>
+    <div
+        style={{
+          maxWidth: "900px",
+          margin: "30px auto",
+          padding: "12px",
+          overflowX: "hidden",
+        }}
+>
       <h1>ラーメン路線図マップ</h1>
       <p>駅を選ぶと、その駅周辺のラーメン記録を見られます。</p>
 
@@ -246,15 +253,19 @@ const deletePost = async (id) => {
         }}
       >
         <div
-          style={{
-            border: "1px solid #ddd",
-            borderRadius: "12px",
-            padding: "16px",
-          }}
-        >
+           style={{
+             border: "1px solid #ddd",
+             borderRadius: "12px",
+             padding: "8px",
+             overflow: "hidden",
+           }}
+>
           <h2>路線図</h2>
 
-          <svg width="620" height="430" style={{ background: "#fafafa" }}>
+         <svg
+           viewBox="0 0 620 430"
+           style={{ width: "100%", height: "auto", background: "#fafafa" }}
+>         
           {selectedLine === "中央線" && (
   <>
     {/* 上段 */}
@@ -325,7 +336,7 @@ const deletePost = async (id) => {
                   fontSize="14"
 >               
                   {station.name}
-</                text>
+</text>
                 <text
                   x={station.x}
                   y={station.y + 5}
