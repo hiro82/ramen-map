@@ -6,6 +6,8 @@ import {
   deleteDoc,
   doc,
   onSnapshot,
+  getDoc,
+  setDoc,
 } from "firebase/firestore";
 
 import { auth } from "./firebase";
@@ -84,7 +86,8 @@ if (selectedLine === "山手線") {
   const [imageFile, setImageFile] = useState(null);
   const [posts, setPosts] = useState([]);
   const [user, setUser] = useState(null); 
-
+  const [nickname, setNickname] = useState("");
+  const [nicknameInput, setNicknameInput] = useState("");
 
 
 if (selectedLine === "山手線") {
@@ -100,6 +103,20 @@ if (selectedLine === "山手線") {
 
 const logout = async () => {
   await signOut(auth);
+};
+
+const saveNickname = async () => {
+  if (!user) return;
+  const name = nicknameInput.trim();
+  if (!name) {
+    alert("表示名を入力して");
+    return;
+  }
+  await setDoc(doc(db, "users", user.uid), {
+    nickname: name,
+  });
+  setNickname(name);
+  setNicknameInput(name);
 };
 
 const defaultPosts = [
@@ -129,8 +146,23 @@ useEffect(() => {
 }, []);
 
 useEffect(() => {
-  const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+  const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
     setUser(currentUser);
+
+    if (currentUser) {
+      const userDoc = await getDoc(doc(db, "users", currentUser.uid));
+
+      if (userDoc.exists()) {
+        setNickname(userDoc.data().nickname);
+        setNicknameInput(userDoc.data().nickname);
+      } else {
+        setNickname("");
+        setNicknameInput("");
+      }
+    } else {
+      setNickname("");
+      setNicknameInput("");
+    }
   });
 
   return () => unsubscribe();
@@ -165,7 +197,7 @@ if (imageFile) {
     imageUrl,
     createdAt: new Date(),
     userId: user.uid,
-    userName: user.displayName || "名前なし",
+    userName: nickname || "名前なし",
   };
 
   try {
@@ -236,14 +268,26 @@ const deletePost = async (id) => {
 </div>
 
 {user ? (
-  <div>
-    <span>{user.displayName}</span>
-  <button onClick={logout}>ログアウト</button>
+  <div style={{ marginBottom: "10px" }}>
+    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+      <span>{nickname || "名前未設定"}</span>
+      <button onClick={logout}>ログアウト</button>
+    </div>
+
+    <div style={{ marginTop: "8px" }}>
+      <input
+        placeholder="表示名を入力"
+        value={nicknameInput}
+        onChange={(e) => setNicknameInput(e.target.value)}
+      />
+      <button onClick={saveNickname}>
+        {nickname ? "名前変更" : "保存"}
+      </button>
+    </div>
   </div>
 ) : (
   <button onClick={login}>Googleでログイン</button>
 )}
-
       <div
             style={{
               display: "grid",
