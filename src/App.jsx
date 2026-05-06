@@ -103,7 +103,8 @@ if (selectedLine === "山手線") {
   const [user, setUser] = useState(null); 
   const [nickname, setNickname] = useState("");
   const [nicknameInput, setNicknameInput] = useState("");
-
+  const [visibleImages, setVisibleImages] = useState({});
+  const [mainTab, setMainTab] = useState("路線図");
 
 
   
@@ -183,6 +184,34 @@ useEffect(() => {
     (post) => post.station === selectedStation
   );
 
+const compressImage = (file) => {
+  return new Promise((resolve) => {
+    const img = new Image();
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d");
+
+    img.onload = () => {
+      const maxWidth = 800;
+      const scale = maxWidth / img.width;
+
+      canvas.width = maxWidth;
+      canvas.height = img.height * scale;
+
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+      canvas.toBlob(
+        (blob) => {
+          resolve(blob);
+        },
+        "image/jpeg",
+        0.7
+      );
+    };
+
+    img.src = URL.createObjectURL(file);
+  });
+};
+
  const addPost = async () => {
   console.log("追加ボタン押された");
 
@@ -194,8 +223,19 @@ useEffect(() => {
   let imageUrl = "";
 
 if (imageFile) {
-  const imageRef = ref(storage, `posts/${Date.now()}_${imageFile.name}`);
-  await uploadBytes(imageRef, imageFile);
+  const compressed = await compressImage(imageFile);
+
+  if (compressed.size > 500000) {
+    alert("画像は500KB以下にして");
+    return;
+  }
+
+  const imageRef = ref(
+    storage,
+    `posts/${user.uid}/${Date.now()}.jpg`
+  );
+
+  await uploadBytes(imageRef, compressed);
   imageUrl = await getDownloadURL(imageRef);
 }
 
@@ -236,139 +276,134 @@ const deletePost = async (id) => {
   };
 
 
-  return (
-    <div
-        style={{
-          maxWidth: "900px",
-          margin: "30px auto",
-          padding: "12px",
-          overflowX: "hidden",
-        }}
->
-      <h1>ラーメン路線図マップ</h1>
-      <p>駅を選ぶと、その駅周辺のラーメン記録を見られます。</p>
-
-      <div style={{ display: "flex", gap: "8px", marginBottom: "20px" }}>
-  <button
-    onClick={() => setSelectedLine("中央線")}
+ return (
+  <div
     style={{
-      background: selectedLine === "中央線" ? "#ff7043" : "#eee",
+      maxWidth: "900px",
+      margin: "30px auto",
+      padding: "12px",
+      overflowX: "hidden",
     }}
   >
-    中央線
-  </button>
+    <h1>ラーメン路線図マップ</h1>
+    <p>駅を選ぶと、その駅周辺のラーメン記録を見られます。</p>
 
-  <button
-    onClick={() => setSelectedLine("山手線")}
-    style={{
-      background: selectedLine === "山手線" ? "#ff7043" : "#eee",
-    }}
-  >
-    山手線
-  </button>
-
-  <button
-    onClick={() => setSelectedLine("田園都市線・半蔵門線")}
-    style={{
-      background:
-        selectedLine === "田園都市線・半蔵門線" ? "#ff7043" : "#eee",
-    }}
-  >
-    田園都市線・半蔵門線
-  </button>
-
-  <button
-  onClick={() => setSelectedLine("東横線")}
-  style={{
-    background: selectedLine === "東横線" ? "#ff7043" : "#eee",
-  }}
->
-  東横線
-</button>
-</div>
-
-{user ? (
-  <div style={{ marginBottom: "10px" }}>
-    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-      <span>{nickname || "名前未設定"}</span>
-      <button onClick={logout}>ログアウト</button>
-    </div>
-
-    <div style={{ marginTop: "8px" }}>
-      <input
-        placeholder="表示名を入力"
-        value={nicknameInput}
-        onChange={(e) => setNicknameInput(e.target.value)}
-      />
-      <button onClick={saveNickname}>
-        {nickname ? "名前変更" : "保存"}
+    <div style={{ display: "flex", gap: "8px", marginBottom: "12px" }}>
+      <button onClick={() => setMainTab("路線図")} style={{ background: mainTab === "路線図" ? "#ff7043" : "#eee" }}>
+        路線図
+      </button>
+      <button onClick={() => setMainTab("リール")} style={{ background: mainTab === "リール" ? "#ff7043" : "#eee" }}>
+        リール
       </button>
     </div>
-  </div>
-) : (
-  <button onClick={login}>Googleでログイン</button>
-)}
+
+    <div style={{ display: "flex", gap: "8px", marginBottom: "20px" }}>
+      {["中央線", "山手線", "田園都市線・半蔵門線", "東横線"].map((line) => (
+        <button
+          key={line}
+          onClick={() => setSelectedLine(line)}
+          style={{ background: selectedLine === line ? "#ff7043" : "#eee" }}
+        >
+          {line}
+        </button>
+      ))}
+    </div>
+
+    {user ? (
+      <div style={{ marginBottom: "10px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+          <span>{nickname || "名前未設定"}</span>
+          <button onClick={logout}>ログアウト</button>
+        </div>
+
+        <div style={{ marginTop: "8px" }}>
+          <input
+            placeholder="表示名を入力"
+            value={nicknameInput}
+            onChange={(e) => setNicknameInput(e.target.value)}
+          />
+          <button onClick={saveNickname}>{nickname ? "名前変更" : "保存"}</button>
+        </div>
+      </div>
+    ) : (
+      <button onClick={login}>Googleでログイン</button>
+    )}
+
+    {mainTab === "リール" && (
       <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: window.innerWidth < 768 ? "1fr" : "2fr 1fr",
-              gap: "16px",
-              alignItems: "start",
-            }}
->         
+        style={{
+          border: "1px solid #ddd",
+          borderRadius: "12px",
+          padding: "12px",
+        }}
+      >
+        <h2>リール</h2>
+        {!user ? (
+          <p>リールを見るにはログインしてください。</p>
+        ) : (
+          <p>ここに画像付き投稿を2列で表示します。</p>
+        )}
+      </div>
+    )}
+
+    {mainTab === "路線図" && (
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: window.innerWidth < 768 ? "1fr" : "2fr 1fr",
+          gap: "16px",
+          alignItems: "start",
+        }}
+      >
         <div
-           style={{
-             border: "1px solid #ddd",
-             borderRadius: "12px",
-             padding: "8px",
-             overflow: "hidden",
-           }}
->
+          style={{
+            border: "1px solid #ddd",
+            borderRadius: "12px",
+            padding: "8px",
+            overflow: "hidden",
+          }}
+        >
           <h2>路線図</h2>
 
-         <svg
-           viewBox="0 0 620 430"
-           style={{ width: "100%", height: "auto", background: "#fafafa" }}
->         
-          {selectedLine === "中央線" && (
-  <>
-    {/* 上段 */}
-    <line x1="80" y1="80" x2="520" y2="80" stroke="#333" strokeWidth="4" />
-    {/* 右の縦 */}
-    <line x1="520" y1="80" x2="520" y2="230" stroke="#333" strokeWidth="4" />
-    {/* 下段 */}
-    <line x1="520" y1="230" x2="80" y2="230" stroke="#333" strokeWidth="4" />
-  </>
-)}
-{selectedLine === "山手線" && (
-  <>
-    {/* 上 */}
-    <line x1="150" y1="80" x2="400" y2="80" stroke="#333" strokeWidth="4" />
-    {/* 右 */}
-    <line x1="400" y1="80" x2="400" y2="280" stroke="#333" strokeWidth="4" />
-    {/* 下 */}
-    <line x1="400" y1="280" x2="150" y2="280" stroke="#333" strokeWidth="4" />
-    {/* 左 */}
-    <line x1="150" y1="280" x2="150" y2="80" stroke="#333" strokeWidth="4" />
-  </>
-)}
-{selectedLine === "田園都市線・半蔵門線" && (
-  <>
-    <line x1="80" y1="80" x2="440" y2="80" stroke="#333" strokeWidth="4" />
-    <line x1="440" y1="80" x2="440" y2="220" stroke="#333" strokeWidth="4" />
-    <line x1="440" y1="220" x2="80" y2="220" stroke="#333" strokeWidth="4" />
-    <line x1="80" y1="220" x2="80" y2="360" stroke="#333" strokeWidth="4" />
-    <line x1="80" y1="360" x2="440" y2="360" stroke="#333" strokeWidth="4" />
-  </>
-)}
+          <svg
+            viewBox="0 0 620 430"
+            style={{ width: "100%", height: "auto", background: "#fafafa" }}
+          >
+            {selectedLine === "中央線" && (
+              <>
+                <line x1="80" y1="80" x2="520" y2="80" stroke="#333" strokeWidth="4" />
+                <line x1="520" y1="80" x2="520" y2="230" stroke="#333" strokeWidth="4" />
+                <line x1="520" y1="230" x2="80" y2="230" stroke="#333" strokeWidth="4" />
+              </>
+            )}
 
-{selectedLine === "東横線" && (
-  <>
-    <line x1="80" y1="80" x2="480" y2="80" stroke="#333" strokeWidth="4" />
-    <line x1="480" y1="80" x2="480" y2="200" stroke="#333" strokeWidth="4" />
-    <line x1="480" y1="200" x2="80" y2="200" stroke="#333" strokeWidth="4" />
-  </>
-)}
+            {selectedLine === "山手線" && (
+              <>
+                <line x1="150" y1="80" x2="400" y2="80" stroke="#333" strokeWidth="4" />
+                <line x1="400" y1="80" x2="400" y2="280" stroke="#333" strokeWidth="4" />
+                <line x1="400" y1="280" x2="150" y2="280" stroke="#333" strokeWidth="4" />
+                <line x1="150" y1="280" x2="150" y2="80" stroke="#333" strokeWidth="4" />
+              </>
+            )}
+
+            {selectedLine === "田園都市線・半蔵門線" && (
+              <>
+                <line x1="80" y1="80" x2="440" y2="80" stroke="#333" strokeWidth="4" />
+                <line x1="440" y1="80" x2="440" y2="220" stroke="#333" strokeWidth="4" />
+                <line x1="440" y1="220" x2="80" y2="220" stroke="#333" strokeWidth="4" />
+                <line x1="80" y1="220" x2="80" y2="360" stroke="#333" strokeWidth="4" />
+                <line x1="80" y1="360" x2="440" y2="360" stroke="#333" strokeWidth="4" />
+              </>
+            )}
+
+            {selectedLine === "東横線" && (
+              <>
+                <line x1="80" y1="80" x2="480" y2="80" stroke="#333" strokeWidth="4" />
+                <line x1="480" y1="80" x2="480" y2="200" stroke="#333" strokeWidth="4" />
+                <line x1="480" y1="200" x2="80" y2="200" stroke="#333" strokeWidth="4" />
+              </>
+            )}
+
             {stations.map((station) => (
               <g
                 key={station.id}
@@ -406,15 +441,10 @@ const deletePost = async (id) => {
                       : "middle"
                   }
                   fontSize="14"
->               
-                  {station.name}
-</text>
-                <text
-                  x={station.x}
-                  y={station.y + 5}
-                  textAnchor="middle"
-                  fontSize="12"
                 >
+                  {station.name}
+                </text>
+                <text x={station.x} y={station.y + 5} textAnchor="middle" fontSize="12">
                   {getPostCount(station.name)}
                 </text>
               </g>
@@ -427,18 +457,16 @@ const deletePost = async (id) => {
             border: "1px solid #ddd",
             borderRadius: "12px",
             padding: "16px",
+            minHeight: "600px",
+            overflowY: "visible",
           }}
         >
           <h2>{selectedStation}駅周辺</h2>
-        {!user && <p>投稿するにはログインしてください</p>}
+          {!user && <p>投稿するにはログインしてください</p>}
 
           <h3>投稿する</h3>
           <div style={{ display: "grid", gap: "8px" }}>
-            <input
-              placeholder="店名"
-              value={shopName}
-              onChange={(e) => setShopName(e.target.value)}
-            />
+            <input placeholder="店名" value={shopName} onChange={(e) => setShopName(e.target.value)} />
 
             <select value={genre} onChange={(e) => setGenre(e.target.value)}>
               <option>家系</option>
@@ -461,21 +489,11 @@ const deletePost = async (id) => {
               onChange={(e) => setRating(e.target.value)}
             />
 
-            <textarea
-              placeholder="メモ"
-              value={memo}
-              onChange={(e) => setMemo(e.target.value)}
-            />
-            {/*  戻したら画像追加できる　一枚０．３円とか
-            <input
-               type="file"
-               accept="image/*"
-               onChange={(e) => setImageFile(e.target.files[0])}
-/>
-            */}
-            <button onClick={addPost} disabled={!user}>
-              追加
-            </button>
+            <textarea placeholder="メモ" value={memo} onChange={(e) => setMemo(e.target.value)} />
+
+            <input type="file" accept="image/*" onChange={(e) => setImageFile(e.target.files[0])} />
+
+            <button onClick={addPost} disabled={!user}>追加</button>
           </div>
 
           <hr style={{ margin: "20px 0" }} />
@@ -500,26 +518,41 @@ const deletePost = async (id) => {
                 <div>評価: ★{post.rating}</div>
                 <div>メモ: {post.memo}</div>
 
-              {post.imageUrl && (
-               <img
-               src={post.imageUrl}
-               alt={post.shopName}
-               style={{
-                        width: "100%",
-                        maxWidth: "300px",
-                        borderRadius: "8px",
-                        marginTop: "8px",
-                     }}
-  />
-             )}
-
+                {post.imageUrl && (
+                  <div style={{ marginTop: "8px" }}>
+                    {!visibleImages[post.id] ? (
+                      <button
+                        onClick={() =>
+                          setVisibleImages({
+                            ...visibleImages,
+                            [post.id]: true,
+                          })
+                        }
+                      >
+                        画像を表示
+                      </button>
+                    ) : (
+                      <img
+                        src={post.imageUrl}
+                        alt={post.shopName}
+                        style={{
+                          width: "100%",
+                          maxWidth: "300px",
+                          borderRadius: "8px",
+                          marginTop: "8px",
+                        }}
+                      />
+                    )}
+                  </div>
+                )}
               </div>
             ))
           )}
         </div>
       </div>
-    </div>
-  );
+    )}
+  </div>
+);
 }
 
 export default App;
