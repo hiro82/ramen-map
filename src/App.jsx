@@ -8,6 +8,7 @@ import {
   onSnapshot,
   getDoc,
   setDoc,
+  updateDoc
 } from "firebase/firestore";
 
 import { auth } from "./firebase";
@@ -209,7 +210,7 @@ const compressImage = (file) => {
           resolve(blob);
         },
         "image/jpeg",
-        0.7
+        0.5
       );
     };
 
@@ -230,10 +231,10 @@ const compressImage = (file) => {
 if (imageFile) {
   const compressed = await compressImage(imageFile);
 
-  if (compressed.size > 500000) {
-    alert("画像は500KB以下にして");
-    return;
-  }
+  if (compressed.size > 1000000) {
+  alert("画像は1MB以下にして");
+  return;
+}
 
   const imageRef = ref(
     storage,
@@ -269,6 +270,26 @@ if (imageFile) {
     console.error("投稿エラー:", error);
     alert("投稿に失敗しました");
   }
+};
+
+const addImageToPost = async (postId, file) => {
+  if (!file || !user) return;
+
+  const compressed = await compressImage(file);
+
+  if (compressed.size > 1000000) {
+    alert("画像は1MB以下にして");
+    return;
+  }
+
+  const imageRef = ref(storage, `posts/${user.uid}/${Date.now()}.jpg`);
+
+  await uploadBytes(imageRef, compressed);
+  const imageUrl = await getDownloadURL(imageRef);
+
+  await updateDoc(doc(db, "posts", postId), {
+    imageUrl,
+  });
 };
 
 const deletePost = async (id) => {
@@ -563,6 +584,15 @@ const deletePost = async (id) => {
                 <div>ジャンル: {post.genre}</div>
                 <div>評価: ★{post.rating}</div>
                 <div>メモ: {post.memo}</div>
+                {!post.imageUrl && user && (
+                <div style={{ marginTop: "8px" }}>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => addImageToPost(post.id, e.target.files[0])}
+                  />
+                </div>
+              )}
 
                 {post.imageUrl && (
                   <div style={{ marginTop: "8px" }}>
