@@ -1,3 +1,4 @@
+import GamePage from "./pages/GamePage";
 import { useState, useEffect, useRef } from "react";
 import { db } from "./firebase";
 import {
@@ -321,6 +322,11 @@ const deletePost = async (id) => {
       <button onClick={() => setMainTab("リール")} style={{ background: mainTab === "リール" ? "#ff7043" : "#eee" }}>
         リール
       </button>
+      <button onClick={() => setMainTab("ゲーム")} style={{ background: mainTab === "ゲーム" ? "#ff7043" : "#eee",
+  }}
+>
+  ゲーム
+</button>
     </div>
 
     <div style={{ display: "flex", gap: "8px", marginBottom: "20px" }}>
@@ -403,8 +409,11 @@ const deletePost = async (id) => {
   ))}
 </div>
         )}
+
       </div>
     )}
+
+    {mainTab === "ゲーム" && <GamePage />}
 
     {mainTab === "路線図" && (
       <div
