@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { db } from "./firebase";
 import {
   collection,
@@ -105,7 +105,8 @@ if (selectedLine === "山手線") {
   const [nicknameInput, setNicknameInput] = useState("");
   const [visibleImages, setVisibleImages] = useState({});
   const [mainTab, setMainTab] = useState("路線図");
-
+  const postRefs = useRef({});
+  const [highlightPostId, setHighlightPostId] = useState(null);
 
   
   const login = async () => {
@@ -183,6 +184,10 @@ useEffect(() => {
   const filteredPosts = posts.filter(
     (post) => post.station === selectedStation
   );
+
+  const imagePosts = posts
+  .filter((post) => post.imageUrl)
+  .reverse();
 
 const compressImage = (file) => {
   return new Promise((resolve) => {
@@ -341,7 +346,41 @@ const deletePost = async (id) => {
         {!user ? (
           <p>リールを見るにはログインしてください。</p>
         ) : (
-          <p>ここに画像付き投稿を2列で表示します。</p>
+          <div
+  style={{
+    display: "grid",
+    gridTemplateColumns: "1fr 1fr",
+    gap: "10px",
+  }}
+>
+  {imagePosts.map((post) => (
+    <img
+  key={post.id}
+  src={post.imageUrl}
+  alt={post.shopName}
+  loading="lazy"
+  onClick={() => {
+    setSelectedStation(post.station);
+    setMainTab("路線図");
+    setHighlightPostId(post.id);
+
+    setTimeout(() => {
+      postRefs.current[post.id]?.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
+    }, 100);
+  }}
+  style={{
+    width: "100%",
+    aspectRatio: "1 / 1",
+    objectFit: "cover",
+    borderRadius: "8px",
+    cursor: "pointer",
+  }}
+/>
+  ))}
+</div>
         )}
       </div>
     )}
@@ -506,12 +545,19 @@ const deletePost = async (id) => {
               <div
                 key={post.id}
                 style={{
-                  border: "1px solid #eee",
-                  borderRadius: "8px",
-                  padding: "12px",
-                  marginBottom: "10px",
-                }}
-              >
+                 border:
+                   highlightPostId === post.id
+                     ? "3px solid #ff7043"
+                     : "1px solid #eee",
+                 borderRadius: "8px",
+                 padding: "12px",
+                 marginBottom: "10px",
+                 background:
+                   highlightPostId === post.id
+                     ? "#fff3ec"
+                     : "white",
+               }}
+                             >
                 <strong>{post.shopName}</strong>
                 <div>投稿者: {post.userName || "不明"}</div>
                 <div>ジャンル: {post.genre}</div>
