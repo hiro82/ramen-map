@@ -1,266 +1,429 @@
-import { useState, useEffect } from "react";
+import "./GamePage.css";
+import { useState } from "react";
 
-function GamePage() {
-  const [playerHp, setPlayerHp] = useState(0);
-  const [enemyHp, setEnemyHp] = useState(0);
-  const [energy, setEnergy] = useState(2);
-  const [gameOver, setGameOver] = useState(false);
-  const [result, setResult] = useState("");
-  const [rewardCards, setRewardCards] = useState([]);
-  const [stage, setStage] = useState(1);
+const MAX_FULLNESS = 600;
+const MAX_ENERGY = 2;
 
-  const starterDeck = [
-  {
-    name: "家系ラーメン",
-    cost: 1,
-    gram: 180,
-  },
-  {
-    name: "二郎系",
-    cost: 2,
-    gram: 320,
-  },
-  {
-    name: "替え玉",
-    cost: 0,
-    gram: 100,
-  },
-  {
-    name: "醤油ラーメン",
-    cost: 1,
-    gram: 140,
-  },
-  {
-    name: "油そば",
-    cost: 1,
-    gram: 160,
-  },
+const STARTER_DECK = [
+  { name: "醤油ラーメン", cost: 1, gram: 140, text: "相手に140g食べさせる" },
+  { name: "醤油ラーメン", cost: 1, gram: 140, text: "相手に140g食べさせる" },
+  { name: "家系ラーメン", cost: 1, gram: 180, text: "相手に180g食べさせる" },
+  { name: "替え玉", cost: 0, gram: 80, text: "0コストで80g食べさせる" },
+  { name: "烏龍茶", cost: 1, gram: 0, heal: 120, text: "自分の満腹度を120g減らす" },
 ];
 
-const [deck, setDeck] = useState(starterDeck);
-const [hand, setHand] = useState([]);
+const CARD_POOL = [
+  { name: "二郎系", cost: 2, gram: 330, text: "重い一撃。330g食べさせる" },
+  { name: "油そば", cost: 1, gram: 190, text: "相手に190g食べさせる" },
+  { name: "つけ麺", cost: 2, gram: 260, draw: 1, text: "260g食べさせて1枚引く" },
+  { name: "ライス追加", cost: 1, gram: 120, text: "相手に120g食べさせる" },
+  { name: "胃薬", cost: 1, gram: 0, heal: 180, text: "自分の満腹度を180g減らす" },
+  { name: "にんにくマシ", cost: 1, gram: 220, selfGram: 60, text: "相手に220g、自分も60g増える" },
+];
 
-useEffect(() => {
-  drawCards(3);
-}, []);
+const MAP_ROUTES = [
+  { station: "神田", next: [1, 2] },
+  { station: "新宿", next: [3] },
+  { station: "中野", next: [3, 4] },
+  { station: "高円寺", next: [5] },
+  { station: "荻窪", next: [5] },
+  { station: "吉祥寺", next: [6, 7] },
+  { station: "三鷹", next: [8] },
+  { station: "東小金井", next: [8] },
+  { station: "武蔵小金井", next: [9] },
+  { station: "国分寺", next: [] },
+];
 
-useEffect(() => {
-  if (enemyHp >= 600) {
-    setGameOver(true);
-    setResult("勝利！");
-    generateRewards();
+function shuffle(array) {
+  return [...array].sort(() => Math.random() - 0.5);
+}
+
+function createCard(card) {
+  return {
+    ...card,
+    id: `${card.name}-${Date.now()}-${Math.random()}`,
+  };
+}
+
+function GamePage() {
+  const [viewPile, setViewPile] = useState(null);
+
+  const [stage, setStage] = useState(0);
+  const [playerFull, setPlayerFull] = useState(0);
+  const [enemyFull, setEnemyFull] = useState(0);
+  const [energy, setEnergy] = useState(MAX_ENERGY);
+
+  const [deck, setDeck] = useState(STARTER_DECK.map(createCard));
+  const [drawPile, setDrawPile] = useState([]);
+  const [discardPile, setDiscardPile] = useState([]);
+  const [hand, setHand] = useState([]);
+
+  const [phase, setPhase] = useState("map");
+  const [message, setMessage] = useState("中央線ラーメン旅、開始！");
+  const [rewards, setRewards] = useState([]);
+
+  function startBattle(currentDeck, currentStage, currentPlayerFull) {
+    const shuffled = shuffle(currentDeck);
+
+    setHand(shuffled.slice(0, 3));
+    setDrawPile(shuffled.slice(3));
+    setDiscardPile([]);
+    setEnemyFull(0);
+    setEnergy(MAX_ENERGY);
+    setPhase("battle");
+    setMessage(`${MAP_ROUTES[currentStage].station}駅に到着。対戦開始！`);
+    setPlayerFull(currentPlayerFull);
   }
-}, [enemyHp]);
 
-useEffect(() => {
-  if (playerHp >= 600) {
-    setGameOver(true);
-    setResult("敗北...");
-  }
-}, [playerHp]);
-
-
-
-const drawCards = (count) => {
-  let newDeck = [...deck];
-  let newHand = [...hand];
-
-  for (let i = 0; i < count; i++) {
-    if (newDeck.length === 0) break;
-
-    const randomIndex = Math.floor(Math.random() * newDeck.length);
-
-    const card = newDeck[randomIndex];
-
-    newHand.push(card);
-
-    newDeck.splice(randomIndex, 1);
+  function selectStation(index) {
+    setStage(index);
+    startBattle(deck, index, playerFull);
   }
 
-  setDeck(newDeck);
-  setHand(newHand);
-};
-  
-const playCard = (card) => {
-  if (gameOver) return;
-  if (energy < card.cost) return;
-  setEnergy(energy - card.cost);
-  setEnemyHp(enemyHp + card.gram);
-  setHand(hand.filter((c) => c !== card));
-};
+  function drawCards(count) {
+    let newDrawPile = [...drawPile];
+    let newDiscardPile = [...discardPile];
+    const newCards = [];
 
-const enemyTurn = () => {
-  if (gameOver) return;
-  const enemyAttack = Math.floor(Math.random() * 120) + 80;
+    for (let i = 0; i < count; i++) {
+      if (newDrawPile.length === 0) {
+        if (newDiscardPile.length === 0) break;
+        newDrawPile = shuffle(newDiscardPile);
+        newDiscardPile = [];
+      }
 
-  setPlayerHp((prev) => prev + enemyAttack);
-};
+      newCards.push(newDrawPile[0]);
+      newDrawPile = newDrawPile.slice(1);
+    }
 
-const generateRewards = () => {
-  const shuffled = [...starterDeck].sort(
-    () => Math.random() - 0.5
-  );
+    setDrawPile(newDrawPile);
+    setDiscardPile(newDiscardPile);
+    setHand((prev) => [...prev, ...newCards]);
+  }
 
-  setRewardCards(shuffled.slice(0, 3));
-};
+  function playCard(card) {
+    if (phase !== "battle") return;
 
-const addCardToDeck = (card) => {
-  setDeck((prev) => [...prev, card]);
+    if (energy < card.cost) {
+      setMessage("コストが足りない！");
+      return;
+    }
 
-  setRewardCards([]);
-  setEnemyHp(0);
-  setPlayerHp(0);
-  setEnergy(2);
-  setHand([]);
-  setGameOver(false);
-  setResult("");
-  setStage((prev) => prev + 1);
+    setEnergy((prev) => prev - card.cost);
+    setHand((prev) => prev.filter((c) => c.id !== card.id));
+    setDiscardPile((prev) => [...prev, card]);
 
-  setTimeout(() => {
-    drawCards(3);
-  }, 0);
-};
+    if (card.gram) {
+      setEnemyFull((prev) => {
+        const next = prev + card.gram;
 
-const endTurn = () => {
-  setEnergy(2);
-  drawCards(1);
+        if (next >= MAX_FULLNESS) {
+          winBattle();
+        }
 
-  enemyTurn();
+        return next;
+      });
+    }
 
-  
-};
+    if (card.heal) {
+      setPlayerFull((prev) => Math.max(0, prev - card.heal));
+    }
+
+    if (card.selfGram) {
+      setPlayerFull((prev) => {
+        const next = prev + card.selfGram;
+
+        if (next >= MAX_FULLNESS) {
+          setPhase("gameover");
+          setMessage("満腹で動けない……ゲームオーバー");
+        }
+
+        return next;
+      });
+    }
+
+    if (card.draw) {
+      drawCards(card.draw);
+    }
+
+    setMessage(`${card.name} を使った！`);
+  }
+
+  function enemyTurn() {
+    const enemyGram = Math.floor(Math.random() * 100) + 120;
+
+    setPlayerFull((prev) => {
+      const next = prev + enemyGram;
+
+      if (next >= MAX_FULLNESS) {
+        setPhase("gameover");
+        setMessage("満腹で動けない……ゲームオーバー");
+      } else {
+        setMessage(`相手が${enemyGram}g食べさせてきた！`);
+      }
+
+      return next;
+    });
+  }
+
+  function endTurn() {
+    if (phase !== "battle") return;
+
+    setDiscardPile((prev) => [...prev, ...hand]);
+    setHand([]);
+    setEnergy(MAX_ENERGY);
+
+    enemyTurn();
+
+    setTimeout(() => {
+      drawCards(3);
+    }, 100);
+  }
+
+  function winBattle() {
+    setPhase("reward");
+    setMessage("勝利！カードを1枚選んでください。");
+    setRewards(shuffle(CARD_POOL).slice(0, 3).map(createCard));
+  }
+
+  function goToMap(nextDeck) {
+    const nextStageOptions = MAP_ROUTES[stage].next;
+
+    if (nextStageOptions.length === 0) {
+      setPhase("clear");
+      setMessage("中央線制覇！ゲームクリア！");
+      return;
+    }
+
+    const digestedFullness = Math.max(0, playerFull - 100);
+
+    setDeck(nextDeck);
+    setPlayerFull(digestedFullness);
+    setRewards([]);
+    setPhase("map");
+    setMessage("次の駅を選んでください。");
+  }
+
+  function chooseReward(card) {
+    const newDeck = [...deck, card];
+    goToMap(newDeck);
+  }
+
+  function skipReward() {
+    goToMap(deck);
+  }
+
+  function restartGame() {
+    const freshDeck = STARTER_DECK.map(createCard);
+
+    setDeck(freshDeck);
+    setStage(0);
+    setPlayerFull(0);
+    setEnemyFull(0);
+    setRewards([]);
+    setDrawPile([]);
+    setDiscardPile([]);
+    setHand([]);
+    setEnergy(MAX_ENERGY);
+    setPhase("map");
+    setMessage("中央線ラーメン旅、開始！");
+  }
+
+  const currentStation = MAP_ROUTES[stage];
 
   return (
-    <div
-      style={{
-        maxWidth: "900px",
-        margin: "0 auto",
-        padding: "20px",
-      }}
-    >
-      <h1>ラーメン・ザ・スパイア</h1>
+    <div className="game">
+      <header className="top">
+        <h1>ラーメン・ザ・スパイア</h1>
+        <p>{message}</p>
+      </header>
 
-      {/* 敵 */}
-      <div
-        style={{
-          border: "2px solid #333",
-          borderRadius: "12px",
-          padding: "20px",
-          marginBottom: "20px",
-        }}
-      >
-        {gameOver && (
+      {phase === "map" && (
+        <section className="reward">
+          <h2>中央線マップ</h2>
 
-    
+          {stage === 0 && hand.length === 0 ? (
+            <>
+              <p>最初の駅を選んでください。</p>
+              <button className="end-turn" onClick={() => selectStation(0)}>
+                神田から始める
+              </button>
+            </>
+          ) : (
+            <>
+              <p>現在地：{currentStation.station}</p>
+              <p>次の駅を選んでください。</p>
 
-  <div
-    style={{
-      fontSize: "32px",
-      fontWeight: "bold",
-      marginBottom: "20px",
-    }}
-  >
-    {result}
-  </div>
-)}
+              <div className="reward-list">
+                {currentStation.next.map((nextIndex) => (
+                  <button
+                    key={nextIndex}
+                    className="card skill"
+                    onClick={() => selectStation(nextIndex)}
+                  >
+                    <h3>{MAP_ROUTES[nextIndex].station}</h3>
+                    <p>この駅へ進む</p>
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+        </section>
+      )}
 
-{rewardCards.length > 0 && (
-  <div style={{ marginBottom: "20px" }}>
-    <h2>カード獲得</h2>
+      {phase !== "map" && (
+        <>
+          <main className="battle-field">
+            <section className="enemy-area">
+              <div className="enemy-card">
+                <h2>
+                  第{stage + 1}駅：{currentStation.station}
+                </h2>
 
-    <div
-      style={{
-        display: "flex",
-        gap: "12px",
-      }}
-    >
-      {rewardCards.map((card, index) => (
-        <div
-          key={index}
-          onClick={() => addCardToDeck(card)}
-          style={{
-            width: "160px",
-            border: "2px solid #333",
-            borderRadius: "12px",
-            padding: "12px",
-            cursor: "pointer",
-            background: "#fff8e1",
-          }}
-        >
-          <h3>{card.name}</h3>
+                <p>
+                  相手の満腹度：{enemyFull} / {MAX_FULLNESS}g
+                </p>
 
-          <div>コスト: {card.cost}</div>
+                <div className="hp-bar">
+                  <div
+                    className="hp-fill enemy-hp"
+                    style={{
+                      width: `${Math.min(100, (enemyFull / MAX_FULLNESS) * 100)}%`,
+                    }}
+                  />
+                </div>
+              </div>
+            </section>
 
-          <div>{card.gram}g</div>
-        </div>
-      ))}
-    </div>
-  </div>
-)}
+            <section className="player-area">
+              <div className="status-card">
+                <h2>プレイヤー</h2>
 
-        <h2>第{stage}駅：大食いサラリーマン</h2>
+                <p>
+                  満腹度：{playerFull} / {MAX_FULLNESS}g
+                </p>
 
-        <div>満腹度: {enemyHp} / 600g</div>
-      </div>
+                <div className="hp-bar">
+                  <div
+                    className="hp-fill player-hp"
+                    style={{
+                      width: `${Math.min(100, (playerFull / MAX_FULLNESS) * 100)}%`,
+                    }}
+                  />
+                </div>
 
-      {/* プレイヤー情報 */}
-      <div
-        style={{
-          border: "2px solid #333",
-          borderRadius: "12px",
-          padding: "20px",
-          marginBottom: "20px",
-        }}
-      >
-        <h2>プレイヤー</h2>
+                <p className="energy">
+                  コスト：{energy} / {MAX_ENERGY}
+                </p>
 
-        <div>満腹度: {playerHp} / 600g</div>
+                <div className="pile-info">
+                  <button onClick={() => setViewPile("draw")}>
+                    山札：{drawPile.length}
+                  </button>
 
-        <div>コスト: {energy}</div>
-      </div>
+                  <span>手札：{hand.length}</span>
 
-      {/* 手札 */}
-      <h2>手札</h2>
+                  <button onClick={() => setViewPile("discard")}>
+                    捨て札：{discardPile.length}
+                  </button>
 
-      <div
-        style={{
-          display: "flex",
-          gap: "12px",
-          flexWrap: "wrap",
-        }}
-      >
-        {hand.map((card, index) => (
-           <div
-    key={index}
-    onClick={() => playCard(card)}
-    style={{
-            width: "160px",
-            border: "2px solid #333",
-            borderRadius: "12px",
-            padding: "12px",
-            background: "white",
-            cursor: "pointer",
-            }}
-          >
-            <h3>{card.name}</h3>
+                  <button onClick={() => setViewPile("deck")}>
+                    デッキ：{deck.length}
+                  </button>
+                </div>
+              </div>
+            </section>
+          </main>
 
-            <div>コスト: {card.cost}</div>
+          {phase === "battle" && (
+            <>
+              <section className="hand">
+                {hand.map((card) => (
+                  <button
+                    key={card.id}
+                    className="card attack"
+                    onClick={() => playCard(card)}
+                  >
+                    <div className="card-cost">{card.cost}</div>
+                    <h3>{card.name}</h3>
+                    {card.gram ? <p>{card.gram}g</p> : null}
+                    <p>{card.text}</p>
+                  </button>
+                ))}
+              </section>
 
-            <div>{card.gram}g</div>
+              <div className="actions">
+                <button className="end-turn" onClick={endTurn}>
+                  ターン終了
+                </button>
+              </div>
+            </>
+          )}
+
+          {phase === "reward" && (
+            <section className="reward">
+              <h2>カード獲得</h2>
+
+              <div className="reward-list">
+                {rewards.map((card) => (
+                  <button
+                    key={card.id}
+                    className="card skill"
+                    onClick={() => chooseReward(card)}
+                  >
+                    <div className="card-cost">{card.cost}</div>
+                    <h3>{card.name}</h3>
+                    {card.gram ? <p>{card.gram}g</p> : null}
+                    <p>{card.text}</p>
+                  </button>
+                ))}
+              </div>
+
+              <button className="skip" onClick={skipReward}>
+                スキップ
+              </button>
+            </section>
+          )}
+
+          {(phase === "gameover" || phase === "clear") && (
+            <section className="result">
+              <h2>{phase === "clear" ? "ゲームクリア！" : "ゲームオーバー"}</h2>
+              <button onClick={restartGame}>もう一度遊ぶ</button>
+            </section>
+          )}
+        </>
+      )}
+
+      {viewPile && (
+        <div className="pile-modal">
+          <div className="pile-modal-content">
+            <button onClick={() => setViewPile(null)}>閉じる</button>
+
+            <h2>
+              {viewPile === "draw"
+                ? "山札"
+                : viewPile === "discard"
+                ? "捨て札"
+                : "デッキ"}
+            </h2>
+
+            <div className="reward-list">
+              {(viewPile === "draw"
+                ? drawPile
+                : viewPile === "discard"
+                ? discardPile
+                : deck
+              ).map((card) => (
+                <div key={card.id} className="card">
+                  <div className="card-cost">{card.cost}</div>
+                  <h3>{card.name}</h3>
+                  <p>{card.text}</p>
+                </div>
+              ))}
+            </div>
           </div>
-        ))}
-      </div>
-
-      {/* ターン終了 */}
-      <button
-  onClick={endTurn}
-  style={{
-          marginTop: "20px",
-          padding: "12px 20px",
-        }}
-      >
-        ターン終了
-      </button>
+        </div>
+      )}
     </div>
   );
 }
